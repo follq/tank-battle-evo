@@ -992,8 +992,6 @@ function fitScreen(){
   brScale=Math.min(maxW/GW,maxH/GH);
   cv.style.width=GW*brScale+'px';
   cv.style.height=GH*brScale+'px';
-  document.getElementById('gameWrap').style.width=GW*brScale+'px';
-  document.getElementById('gameWrap').style.height=GH*brScale+'px';
 }
 fitScreen();window.addEventListener('resize',fitScreen);
 function toLogical(clientX,clientY){
@@ -1028,15 +1026,16 @@ cv.addEventListener('wheel',function(e){
   if(state!==2)return;
   targetZoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,targetZoom-e.deltaY*0.0005));
 });
-// 触摸: 单摇杆(移动方向=炮口方向) + 射击按钮
+// 触摸事件
+cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
 // PC 鼠标事件
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
 cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
-
-function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
-function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
-function brClick(e){
+// 点击事件
+cv.addEventListener('click',function(e){
   var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
   // 游戏中退出按钮: GW-72 ~ GW-10, y:5~27
   if(state===2&&mx>GW-72&&mx<GW-10&&my>5&&my<27){state=0;map=null;players=[];bots=[];bullets=[];powerups=[];liquids={};cans=[];killFeed=[];takenEvas={};return;}
@@ -1053,8 +1052,10 @@ function brClick(e){
   if(state===1){
     handleSelectClick(mx,my);
   }
-}
+});
 
+function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 // 主循环
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
