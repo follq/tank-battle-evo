@@ -37,9 +37,10 @@ var EC={
 var CANS_PER_CH=[0,2,2,3,4,5,5]; // 每章能量罐数
 
 var cv=document.getElementById('gameCanvas');
+cv.width=GW;cv.height=GH;
 var ctx=cv.getContext('2d');
 
-// 屏幕适配：canvas 物理尺寸匹配屏幕，内部逻辑坐标不变
+// 屏幕适配：canvas 物理分辨率不变，CSS 尺寸等比缩放
 function fitScreen(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
   scaleFactor=Math.min(maxW/GW,maxH/GH);
