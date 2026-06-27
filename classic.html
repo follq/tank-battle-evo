@@ -40,7 +40,7 @@ var cv=document.getElementById('gameCanvas');
 cv.width=GW;cv.height=GH;
 var ctx=cv.getContext('2d');
 
-// 屏幕适配：缩放 canvas 填满视口
+// 屏幕适配：CSS 缩放填满视口，触摸坐标转换
 function fitScreen(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
   scaleFactor=Math.min(maxW/GW,maxH/GH);
@@ -51,11 +51,17 @@ function fitScreen(){
 }
 fitScreen();window.addEventListener('resize',fitScreen);
 
-// 将触摸/鼠标坐标转换为逻辑坐标
 function toLogical(clientX,clientY){
   var r=cv.getBoundingClientRect();
   return {x:(clientX-r.left)/scaleFactor,y:(clientY-r.top)/scaleFactor};
 }
+
+// 修复移动端触摸：在 gameWrap 上监听，代理到 cv 逻辑
+var gw=document.getElementById('gameWrap');
+gw.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+gw.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+gw.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
+gw.addEventListener('click',function(e){cvClick(e);});
 var state=0,map=[],player,enemies=[],bullets=[],powerups=[],liquids={},cans=[];
 var toSp=0,spd=0,tot=0,spT=2,lt=0;
 var keys={},tdir=null,tfire=false;
@@ -458,13 +464,12 @@ document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;i
   if(e.key==='Escape'){state=0;curLevel=1;curChapter=1;map=null;enemies=[];bullets=[];powerups=[];liquids={};cans=[];}
 });
 document.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;if(e.key==' '||e.key=='j')tfire=false;});
-cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);});
-cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);});
-cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
+// PC 鼠标事件（在 canvas 上）
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
 cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
-cv.addEventListener('click',function(e){
+
+function cvClick(e){
   var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
   // 游戏中退出按钮: GW-75 ~ GW-10, y:4~24
   if(state===1&&mx>GW-75&&mx<GW-10&&my>4&&my<24){backToMenu();return;}
@@ -477,7 +482,7 @@ cv.addEventListener('click',function(e){
     if(mx>GW/2-75&&mx<GW/2+75&&my>GH/2+20&&my<GH/2+58)backToMenu();
     else if(curLevel<30){curLevel++;startGame();}else{curLevel=1;startGame();}
   }
-});
+}
 function backToMenu(){state=0;curLevel=1;curChapter=1;map=null;enemies=[];bullets=[];powerups=[];liquids={};cans=[];}
 function ht(t){var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 function hm(e){var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}

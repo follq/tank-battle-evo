@@ -986,19 +986,27 @@ cv.width=GW;cv.height=GH;
 ctx=cv.getContext('2d');
 
 // 屏幕适配
+var brScale=1;
 function fitScreen(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  var s=Math.min(maxW/GW,maxH/GH);
-  cv.style.width=GW*s+'px';
-  cv.style.height=GH*s+'px';
-  document.getElementById('gameWrap').style.width=GW*s+'px';
-  document.getElementById('gameWrap').style.height=GH*s+'px';
+  brScale=Math.min(maxW/GW,maxH/GH);
+  cv.style.width=GW*brScale+'px';
+  cv.style.height=GH*brScale+'px';
+  document.getElementById('gameWrap').style.width=GW*brScale+'px';
+  document.getElementById('gameWrap').style.height=GH*brScale+'px';
 }
 fitScreen();window.addEventListener('resize',fitScreen);
 function toLogical(clientX,clientY){
   var r=cv.getBoundingClientRect();
-  return {x:(clientX-r.left)/(parseFloat(cv.style.width)||GW)*GW,y:(clientY-r.top)/(parseFloat(cv.style.height)||GH)*GH};
+  return {x:(clientX-r.left)/brScale,y:(clientY-r.top)/brScale};
 }
+
+// 触摸事件在 gameWrap 上（移动端）
+var gw=document.getElementById('gameWrap');
+gw.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+gw.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
+gw.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
+gw.addEventListener('click',function(e){brClick(e);});
 
 document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(e.key==' '||e.key=='j')tfire=true;
   if(e.key==='Escape'){
@@ -1021,16 +1029,14 @@ cv.addEventListener('wheel',function(e){
   targetZoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,targetZoom-e.deltaY*0.0005));
 });
 // 触摸: 单摇杆(移动方向=炮口方向) + 射击按钮
-cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);});
-cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);});
-cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
-
-function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+// PC 鼠标事件
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
 cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
+
+function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
-cv.addEventListener('click',function(e){
+function brClick(e){
   var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
   // 游戏中退出按钮: GW-72 ~ GW-10, y:5~27
   if(state===2&&mx>GW-72&&mx<GW-10&&my>5&&my<27){state=0;map=null;players=[];bots=[];bullets=[];powerups=[];liquids={};cans=[];killFeed=[];takenEvas={};return;}
@@ -1047,7 +1053,7 @@ cv.addEventListener('click',function(e){
   if(state===1){
     handleSelectClick(mx,my);
   }
-});
+}
 
 
 // 主循环
