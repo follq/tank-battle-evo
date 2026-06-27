@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>坦克大战 EVO — 地图编辑器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a16;display:flex;flex-direction:column;align-items:center;min-height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;overflow-x:hidden}
+#canvasWrap{position:relative;margin-top:8px}
+canvas{display:block;border:2px solid #333;border-radius:4px;touch-action:none}
+#pos{color:#888;font-size:11px;text-align:center;margin:4px 0}
+#toolbar{width:100%;max-width:750px;padding:6px 8px;display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:wrap;justify-content:center}
+.tool-btn{padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#ccc;cursor:pointer;font-size:11px;white-space:nowrap;transition:all .15s;touch-action:manipulation}
+.tool-btn:active{background:rgba(255,255,255,.18)}
+.tool-btn.active{background:rgba(240,192,64,.2);border-color:#f0c040;color:#f0c040}
+.tool-btn.clear{color:#f66;border-color:#f66}
+.tool-btn.save{color:#4f4;border-color:#4f4}
+.tool-btn.back{color:#888;border-color:#555}
+#info{color:#555;font-size:10px;text-align:center;margin:2px 0 8px}
+</style>
+</head>
+<body>
+<div id="canvasWrap">
+  <canvas id="editCanvas"></canvas>
+</div>
+<div id="pos">x:0 y:0</div>
+<div id="toolbar">
+  <button class="tool-btn active" data-tile=".">空地</button>
+  <button class="tool-btn" data-tile="#">砖块</button>
+  <button class="tool-btn" data-tile="S">钢铁</button>
+  <button class="tool-btn" data-tile="W">水域</button>
+  <button class="tool-btn" data-tile="G">草地</button>
+  <button class="tool-btn" data-tile="B">水晶</button>
+  <button class="tool-btn" data-tile="P">玩家</button>
+  <button class="tool-btn" data-tile="1">敌1</button>
+  <button class="tool-btn" data-tile="2">敌2</button>
+  <button class="tool-btn" data-tile="3">敌3</button>
+  <button class="tool-btn" data-tile="4">敌4</button>
+  <button class="tool-btn clear" onclick="clearMap()">清空</button>
+  <button class="tool-btn save" onclick="exportMap()">导出</button>
+  <button class="tool-btn" onclick="importMap()">导入</button>
+  <button class="tool-btn" onclick="publishMap()" style="color:#ff8;border-color:#ff8">📤 发布到社区</button>
+  <button class="tool-btn back" onclick="location.href='index.html'">返回</button>
+</div>
+<div id="info">点击放置 | 长按/右键清除 | 拖拽连续绘制</div>
+<script>
+var GW=750,GH=750,COLS=15,ROWS=15,CS=50;
+var isMobile=/Mobi|Android/i.test(navigator.userAgent);
+if(isMobile){var s=Math.min(window.innerWidth-16,window.innerHeight-200,750);GW=GH=s;CS=s/15;}
+
+var cv=document.getElementById('editCanvas');
+cv.width=GW;cv.height=GH;
+var ctx=cv.getContext('2d');
+var curTile='.';
+var map=[];
+var drawMode=null; // null=idle, 'place'=放置, 'erase'=清除
+
+function clearMap(){for(var r=0;r<ROWS;r++){map[r]=[];for(var c=0;c<COLS;c++)map[r][c]='.';}}
+clearMap();
+
+// 工具按钮
+document.querySelectorAll('.tool-btn[data-tile]').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.tool-btn[data-tile]').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    curTile=b.dataset.tile;
+  });
+  b.addEventListener('touchend',function(e){e.preventDefault();e.stopPropagation();b.click();});
+});
+
+function getCell(e){
+  var r=cv.getBoundingClientRect();
+  var x=e.clientX-r.left,y=e.clientY-r.top;
+  var c=Math.floor(x/CS),row=Math.floor(y/CS);
+  document.getElementById('pos').textContent='x:'+c+' y:'+row;
+  if(c>=0&&c<COLS&&row>=0&&row<ROWS)return{c:c,r:row};
+  return null;
+}
+
+function placeTile(cell){
+  if(drawMode==='erase'){map[cell.r][cell.c]='.';return;}
+  if(drawMode==='place')map[cell.r][cell.c]=curTile;
+}
+
+// --- PC 鼠标 ---
+cv.addEventListener('mousedown',function(e){e.preventDefault();drawMode=e.button===2?'erase':'place';var cell=getCell(e);if(cell)placeTile(cell);});
+cv.addEventListener('mousemove',function(e){if(drawMode){var cell=getCell(e);if(cell)placeTile(cell);}});
+cv.addEventListener('mouseup',function(){drawMode=null;});
+cv.addEventListener('mouseleave',function(){drawMode=null;});
+cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+
+// --- 手机触摸 ---
+var longPressTimer=null,lastCell=null;
+
+cv.addEventListener('touchstart',function(e){e.preventDefault();
+  if(e.touches.length===1){
+    var cell=getCell(e.touches[0]);
+    lastCell=cell;
+    // 长按0.4秒 = 清除模式
+    longPressTimer=setTimeout(function(){
+      drawMode='erase';if(lastCell){map[lastCell.r][lastCell.c]='.';}
+    },400);
+    // 短按 = 放置
+    drawMode='place';
+    if(cell)placeTile(cell);
+  }
+},{passive:false});
+
+cv.addEventListener('touchmove',function(e){e.preventDefault();
+  clearTimeout(longPressTimer);
+  var cell=getCell(e.touches[0]);
+  if(cell&&drawMode)placeTile(cell);
+},{passive:false});
+
+cv.addEventListener('touchend',function(e){e.preventDefault();
+  clearTimeout(longPressTimer);drawMode=null;lastCell=null;
+});
+
+// --- 导出/导入 ---
+function exportMap(){
+  var json=JSON.stringify(map);
+  if(navigator.clipboard){navigator.clipboard.writeText(json).then(function(){alert('已复制到剪贴板!');}).catch(function(){prompt('复制以下内容:',json);});}
+  else{prompt('复制以下内容:',json);}
+}
+function importMap(){
+  var json=prompt('粘贴地图JSON:');
+  if(!json)return;
+  try{var data=JSON.parse(json);if(Array.isArray(data)&&data.length===ROWS){map=data;}}catch(e){alert('JSON格式错误');}
+}
+
+function publishMap(){
+  var name=prompt('给你的地图起个名字:','我的自定义地图');
+  if(!name)return;
+  var author=prompt('你的昵称:','匿名玩家');
+  if(!author)author='匿名玩家';
+  var desc=prompt('地图描述(可选):','');
+  var maps=JSON.parse(localStorage.getItem('tankevo_community')||'[]');
+  maps.push({
+    id:Date.now(),
+    name:name,
+    author:author,
+    desc:desc||'',
+    map:JSON.parse(JSON.stringify(map)),
+    date:new Date().toISOString().slice(0,10),
+    stars:{},
+    plays:0
+  });
+  localStorage.setItem('tankevo_community',JSON.stringify(maps));
+  alert('已发布到社区! 跳转到社区页面查看');
+  location.href='community.html';
+}
+
+// --- 渲染 ---
+function drawTile(x,y,t){
+  var s=CS-1;
+  if(t=='#'){ctx.fillStyle='#8b4513';ctx.fillRect(x+1,y+1,s-1,s-1);ctx.fillStyle='#a0522d';ctx.fillRect(x+1,y+1,s-1,s/2);ctx.strokeStyle='#6b3410';ctx.lineWidth=1;ctx.strokeRect(x+1.5,y+1.5,s-3,s-3);}
+  else if(t=='S'){ctx.fillStyle='#667788';ctx.fillRect(x+1,y+1,s-1,s-1);ctx.fillStyle='#8899aa';ctx.fillRect(x+3,y+3,s-5,s-5);ctx.strokeStyle='#445566';ctx.lineWidth=1.5;ctx.strokeRect(x+1.5,y+1.5,s-3,s-3);}
+  else if(t=='W'){ctx.fillStyle='#1a5588';ctx.fillRect(x,y,s+1,s+1);}
+  else if(t=='G'){ctx.fillStyle='#1d4518';ctx.fillRect(x,y,s+1,s+1);}
+  else if(t=='B'){ctx.fillStyle='#1a0a0a';ctx.fillRect(x,y,s+1,s+1);var g=ctx.createRadialGradient(x+CS/2,y+CS/2,0,x+CS/2,y+CS/2,s/2);g.addColorStop(0,'#ff6688');g.addColorStop(.5,'#cc2244');g.addColorStop(1,'#660011');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x+CS/2,y+3);ctx.lineTo(x+s-3,y+CS/2);ctx.lineTo(x+CS/2,y+s-3);ctx.lineTo(x+3,y+CS/2);ctx.closePath();ctx.fill();}
+  else if(t=='P'){ctx.fillStyle='#111125';ctx.fillRect(x,y,s+1,s+1);ctx.fillStyle='#44dd44';ctx.font='bold '+Math.floor(CS*0.32)+'px sans-serif';ctx.textAlign='center';ctx.fillText('P',x+CS/2,y+CS/2+CS*0.12);}
+  else if(t>='1'&&t<='4'){var clrs={'1':'#ff6666','2':'#ffaa00','3':'#ff4444','4':'#cc0000'};ctx.fillStyle='#111125';ctx.fillRect(x,y,s+1,s+1);ctx.fillStyle=clrs[t];ctx.font='bold '+Math.floor(CS*0.32)+'px sans-serif';ctx.textAlign='center';ctx.fillText(t,x+CS/2,y+CS/2+CS*0.12);}
+  else{ctx.fillStyle='#111125';ctx.fillRect(x,y,s+1,s+1);ctx.strokeStyle='#181830';ctx.lineWidth=.3;ctx.strokeRect(x,y,s+1,s+1);}
+}
+
+function render(){
+  ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++)drawTile(c*CS,r*CS,map[r][c]);
+  ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=.3;
+  for(var r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CS);ctx.lineTo(GW,r*CS);ctx.stroke();}
+  for(var c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CS,0);ctx.lineTo(c*CS,GH);ctx.stroke();}
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

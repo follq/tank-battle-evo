@@ -1,0 +1,15 @@
+{
+  "description": "坦克大战 EVO",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": false,
+    "minified": false,
+    "autoCompile": true
+  },
+  "compileType": "game",
+  "libVersion": "3.5.0",
+  "appid": "touristappid",
+  "projectname": "tank-battle-evo",
+  "condition": {}
+}

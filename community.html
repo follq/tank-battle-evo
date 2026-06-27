@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>坦克大战 EVO — 地图社区</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a16;color:#fff;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh}
+.header{text-align:center;padding:20px 10px;border-bottom:1px solid #222}
+.header h1{color:#f0c040;font-size:24px}
+.header p{color:#888;font-size:13px;margin-top:4px}
+.header .btns{margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 18px;border-radius:8px;border:1px solid #555;background:rgba(255,255,255,.05);color:#ccc;cursor:pointer;font-size:13px;text-decoration:none;display:inline-block;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn.primary{border-color:#f0c040;color:#f0c040}
+.btn.green{border-color:#4f4;color:#4f4}
+#mapList{max-width:800px;margin:0 auto;padding:10px}
+.map-card{background:rgba(255,255,255,.03);border:1px solid #222;border-radius:10px;padding:14px;margin:12px 0;display:flex;gap:12px;align-items:flex-start;transition:all .2s}
+.map-card:hover{border-color:#444}
+.map-card canvas{border-radius:6px;flex-shrink:0}
+.map-info{flex:1;min-width:0}
+.map-info h3{color:#f0c040;font-size:16px;margin-bottom:4px}
+.map-info .meta{color:#666;font-size:11px;margin-bottom:6px}
+.map-info .desc{color:#aaa;font-size:12px;margin-bottom:8px;word-break:break-all}
+.stars{cursor:pointer;display:inline-flex;gap:2px;margin-bottom:6px}
+.stars span{font-size:18px;color:#333;transition:all .1s}
+.stars span.active{color:#f0c040}
+.stars span:hover{transform:scale(1.2)}
+.avg-star{color:#f0c040;font-size:12px;margin-left:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{font-size:11px;padding:5px 12px}
+.share-panel{display:none;margin-top:8px;padding:8px;background:rgba(0,0,0,.3);border-radius:6px}
+.share-panel.show{display:block}
+.share-panel input{width:100%;padding:6px;background:#111;border:1px solid #333;color:#0f8;font-size:11px;border-radius:4px;margin-bottom:6px}
+.share-panel .copy-btn{font-size:11px;padding:4px 10px;cursor:pointer;background:rgba(0,255,100,.1);border:1px solid #0f8;color:#0f8;border-radius:4px}
+.empty{text-align:center;color:#555;padding:60px 20px}
+.empty h3{font-size:20px;margin-bottom:8px}
+#previewOverlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:100;justify-content:center;align-items:center;flex-direction:column}
+#previewOverlay.show{display:flex}
+#previewOverlay canvas{border:2px solid #333;border-radius:6px}
+#previewOverlay .close{color:#fff;font-size:20px;cursor:pointer;margin-top:10px;padding:8px 24px;border:1px solid #555;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🗺 地图社区</h1>
+  <p>浏览、下载、打分玩家自制地图 · 邀请微信好友一起玩</p>
+  <div class="btns">
+    <a href="editor.html" class="btn primary">🎨 创建地图</a>
+    <a href="index.html" class="btn">↩ 返回大厅</a>
+  </div>
+</div>
+<div id="mapList"></div>
+<div id="previewOverlay"><canvas id="previewCanvas"></canvas><div class="close" onclick="closePreview()">关闭</div></div>
+<script>
+var CS=28,COLS=15,ROWS=15;
+var maps=JSON.parse(localStorage.getItem('tankevo_community')||'[]');
+
+function saveMaps(){localStorage.setItem('tankevo_community',JSON.stringify(maps));}
+
+function getAvg(m){var ks=Object.keys(m.stars||{});if(ks.length===0)return 0;var s=0;for(var i=0;i<ks.length;i++)s+=m.stars[ks[i]];return Math.round(s/ks.length*10)/10;}
+
+function getMyStar(m){var uid=fingerprint();return(m.stars||{})[uid]||0;}
+
+function fingerprint(){var k='tankevo_uid',v=localStorage.getItem(k);if(!v){v='u'+Date.now()+Math.random().toString(36).slice(2,8);localStorage.setItem(k,v);}return v;}
+
+function rateMap(id,star){
+  var m=maps.find(function(x){return x.id===id;});
+  if(!m)return;
+  if(!m.stars)m.stars={};
+  var uid=fingerprint();
+  if(m.stars[uid]===star)star=0;
+  m.stars[uid]=star;
+  saveMaps();
+  renderList();
+}
+
+function deleteMap(id){if(confirm('确定删除这张地图?')){maps=maps.filter(function(x){return x.id!==id;});saveMaps();renderList();}}
+
+function playMap(mapData){
+  var json=JSON.stringify(mapData);
+  localStorage.setItem('tankevo_play_map',json);
+  location.href='classic.html?custom=1';
+}
+
+function shareMap(id){
+  var m=maps.find(function(x){return x.id===id;});
+  if(!m)return;
+  var panel=document.getElementById('share-'+id);
+  panel.classList.toggle('show');
+  var url='https://tank-evo.game/play/'+id;
+  var text='🚀 来玩我做的坦克大战地图!「'+m.name+'」by '+m.author+' | 坦克大战EVO';
+  var input=panel.querySelector('input');
+  input.value=text+'\n'+url;
+}
+
+function copyShare(id){
+  var input=document.getElementById('share-'+id).querySelector('input');
+  input.select();document.execCommand('copy');
+  alert('已复制! 粘贴到微信发送给好友');
+}
+
+function previewMap(mapData){
+  var ov=document.getElementById('previewOverlay');
+  var cv=document.getElementById('previewCanvas');
+  cv.width=CS*COLS;cv.height=CS*ROWS;
+  var ctx=cv.getContext('2d');
+  ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,cv.width,cv.height);
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    var x=c*CS,y=r*CS,s=CS-1,t=mapData[r][c];
+    if(t=='#'){ctx.fillStyle='#8b4513';ctx.fillRect(x+1,y+1,s-1,s-1);ctx.fillStyle='#a0522d';ctx.fillRect(x+1,y+1,s-1,s/2);}
+    else if(t=='S'){ctx.fillStyle='#667788';ctx.fillRect(x+1,y+1,s-1,s-1);ctx.fillStyle='#8899aa';ctx.fillRect(x+2,y+2,s-3,s-3);}
+    else if(t=='W'){ctx.fillStyle='#1a5588';ctx.fillRect(x,y,s+1,s+1);}
+    else if(t=='G'){ctx.fillStyle='#1d4518';ctx.fillRect(x,y,s+1,s+1);}
+    else if(t=='B'){ctx.fillStyle='#1a0a0a';ctx.fillRect(x,y,s+1,s+1);var g=ctx.createRadialGradient(x+CS/2,y+CS/2,0,x+CS/2,y+CS/2,s/2);g.addColorStop(0,'#ff6688');g.addColorStop(.5,'#cc2244');g.addColorStop(1,'#660011');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x+CS/2,y+3);ctx.lineTo(x+s-3,y+CS/2);ctx.lineTo(x+CS/2,y+s-3);ctx.lineTo(x+3,y+CS/2);ctx.closePath();ctx.fill();}
+    else{ctx.fillStyle='#111125';ctx.fillRect(x,y,s+1,s+1);ctx.strokeStyle='#181830';ctx.lineWidth=.3;ctx.strokeRect(x,y,s+1,s+1);}
+    if(t=='P'){ctx.fillStyle='#44dd44';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('P',x+CS/2,y+CS/2+4);}
+    if(t>='1'&&t<='4'){var clrs={'1':'#ff6666','2':'#ffaa00','3':'#ff4444','4':'#cc0000'};ctx.fillStyle=clrs[t];ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(t,x+CS/2,y+CS/2+4);}
+  }
+  ov.classList.add('show');
+}
+function closePreview(){document.getElementById('previewOverlay').classList.remove('show');}
+
+function renderList(){
+  var el=document.getElementById('mapList');
+  if(maps.length===0){el.innerHTML='<div class="empty"><h3>📭 还没有地图</h3><p>去地图编辑器创建第一张地图吧!</p><a href="editor.html" class="btn primary" style="margin-top:12px">🎨 创建地图</a></div>';return;}
+  maps.sort(function(a,b){return b.id-a.id;});
+  var h='';
+  for(var i=0;i<maps.length;i++){
+    var m=maps[i],avg=getAvg(m),myStar=getMyStar(m);
+    h+='<div class="map-card">';
+    h+='<canvas width="'+(CS*COLS)+'" height="'+(CS*ROWS)+'" onclick="previewMap(maps['+i+'].map)"></canvas>';
+    h+='<div class="map-info">';
+    h+='<h3>'+esc(m.name)+'</h3>';
+    h+='<div class="meta">👤 '+esc(m.author)+' · 📅 '+m.date+' · ▶ '+m.plays+'次游玩</div>';
+    if(m.desc)h+='<div class="desc">'+esc(m.desc)+'</div>';
+    h+='<div class="stars" data-id="'+m.id+'">';
+    for(var s=1;s<=5;s++)h+='<span class="'+(myStar>=s?'active':'')+'" onclick="rateMap('+m.id+','+s+')">★</span>';
+    h+='<span class="avg-star">'+(avg>0?avg.toFixed(1)+' ('+Object.keys(m.stars||{}).length+'人)':'暂无评分')+'</span></div>';
+    h+='<div class="actions">';
+    h+='<button class="btn green" onclick="playMap(maps['+i+'].map)">▶ 开始游戏</button>';
+    h+='<button class="btn" onclick="shareMap('+m.id+')">📤 分享给好友</button>';
+    h+='<button class="btn" onclick="deleteMap('+m.id+')">🗑 删除</button>';
+    h+='</div>';
+    h+='<div class="share-panel" id="share-'+m.id+'">';
+    h+='<input readonly value="" onclick="this.select()">';
+    h+='<button class="copy-btn" onclick="copyShare('+m.id+')">📋 复制分享内容</button>';
+    h+='</div></div></div>';
+  }
+  el.innerHTML=h;
+  // 渲染缩略图
+  setTimeout(function(){
+    var cards=el.querySelectorAll('.map-card canvas');
+    for(var i=0;i<cards.length&&i<maps.length;i++){
+      var ctx=cards[i].getContext('2d'),md=maps[i].map;
+      ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,CS*COLS,CS*ROWS);
+      for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+        var t=md[r][c],x=c*CS,y=r*CS;
+        if(t=='#'){ctx.fillStyle='#8b4513';ctx.fillRect(x,y,CS,CS);}
+        else if(t=='S'){ctx.fillStyle='#667788';ctx.fillRect(x,y,CS,CS);}
+        else if(t=='W'){ctx.fillStyle='#1a5588';ctx.fillRect(x,y,CS,CS);}
+        else if(t=='G'){ctx.fillStyle='#1d4518';ctx.fillRect(x,y,CS,CS);}
+        else if(t=='B'){ctx.fillStyle='#cc2244';ctx.fillRect(x,y,CS,CS);}
+        else{ctx.fillStyle='#111125';ctx.fillRect(x,y,CS,CS);}
+      }
+    }
+  },50);
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+renderList();
+</script>
+</body>
+</html>

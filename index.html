@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>坦克大战 EVO</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a16;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{text-align:center;padding:40px 20px 20px}
+.header h1{color:#f0c040;font-size:36px;margin-bottom:8px}
+.header p{color:#888;font-size:16px}
+.menu{display:flex;flex-wrap:wrap;justify-content:center;gap:24px;padding:20px;max-width:900px}
+.card{background:rgba(255,255,255,0.03);border:2px solid #333;border-radius:16px;padding:32px 28px;width:280px;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;color:#fff}
+.card:hover{border-color:#f0c040;background:rgba(240,192,64,0.06);transform:translateY(-2px)}
+.card h2{font-size:22px;margin-bottom:8px}
+.card .icon{font-size:48px;margin-bottom:12px;display:block}
+.card p{color:#888;font-size:14px;line-height:1.5}
+.footer{color:#555;font-size:12px;padding:40px 20px;text-align:center}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎮 坦克大战 EVO</h1>
+  <p>经典坦克大战 × 大逃杀生存</p>
+</div>
+<div class="menu">
+  <a href="classic.html" class="card">
+    <span class="icon">🏰</span>
+    <h2>经典模式</h2>
+    <p>保卫水晶基地<br>挑战30关 · 多种道具</p>
+  </a>
+  <a href="battle-royale.html" class="card">
+    <span class="icon">🔫</span>
+    <h2>大逃杀模式</h2>
+    <p>42×30 大地图<br>4玩家+14Bot · 缩圈生存</p>
+  </a>
+</div>
+<div class="footer">
+  坦克大战 EVO · 纯前端游戏 · 无需服务器
+</div>
+</body>
+</html>
