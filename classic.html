@@ -7,16 +7,18 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a16;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
-canvas{display:block;border:2px solid #333;border-radius:8px}
+#gameWrap{position:relative;overflow:hidden}
+canvas{display:block;border:2px solid #333;border-radius:8px;transform-origin:0 0}
 </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
+<div id="gameWrap"><canvas id="gameCanvas"></canvas></div>
 <script src="js/sprites.js?v=2"></script>
 <script>
 var GW=1254,GH=1254,COLS=15,ROWS=15,CS=72;
 var MAP_OX=85,MAP_OY=85;
 var BSPD=480,BSZ=8;
+var scaleFactor=1; // 屏幕缩放比
 var DIR={UP:0,RIGHT:1,DOWN:2,LEFT:3};
 var DV={0:{dx:0,dy:-1},1:{dx:1,dy:0},2:{dx:0,dy:1},3:{dx:-1,dy:0}};
 
@@ -37,6 +39,23 @@ var CANS_PER_CH=[0,2,2,3,4,5,5]; // 每章能量罐数
 var cv=document.getElementById('gameCanvas');
 cv.width=GW;cv.height=GH;
 var ctx=cv.getContext('2d');
+
+// 屏幕适配：缩放 canvas 填满视口
+function fitScreen(){
+  var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
+  scaleFactor=Math.min(maxW/GW,maxH/GH);
+  cv.style.width=GW*scaleFactor+'px';
+  cv.style.height=GH*scaleFactor+'px';
+  document.getElementById('gameWrap').style.width=GW*scaleFactor+'px';
+  document.getElementById('gameWrap').style.height=GH*scaleFactor+'px';
+}
+fitScreen();window.addEventListener('resize',fitScreen);
+
+// 将触摸/鼠标坐标转换为逻辑坐标
+function toLogical(clientX,clientY){
+  var r=cv.getBoundingClientRect();
+  return {x:(clientX-r.left)/scaleFactor,y:(clientY-r.top)/scaleFactor};
+}
 var state=0,map=[],player,enemies=[],bullets=[],powerups=[],liquids={},cans=[];
 var toSp=0,spd=0,tot=0,spT=2,lt=0;
 var keys={},tdir=null,tfire=false;
@@ -446,7 +465,7 @@ cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
 cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
 cv.addEventListener('click',function(e){
-  var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
   // 游戏中退出按钮: GW-75 ~ GW-10, y:4~24
   if(state===1&&mx>GW-75&&mx<GW-10&&my>4&&my<24){backToMenu();return;}
   if(state===0){
@@ -460,8 +479,8 @@ cv.addEventListener('click',function(e){
   }
 });
 function backToMenu(){state=0;curLevel=1;curChapter=1;map=null;enemies=[];bullets=[];powerups=[];liquids={};cans=[];}
-function ht(t){var r=cv.getBoundingClientRect(),x=t.clientX-r.left,y=t.clientY-r.top;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
-function hm(e){var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function ht(t){var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function hm(e){var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
 

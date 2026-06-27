@@ -7,11 +7,12 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a16;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
-canvas{display:block;border:2px solid #333;border-radius:4px;outline:none}
+#gameWrap{position:relative;overflow:hidden}
+canvas{display:block;border:2px solid #333;border-radius:4px;outline:none;transform-origin:0 0}
 </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
+<div id="gameWrap"><canvas id="gameCanvas"></canvas></div>
 <script src="js/sprites.js?v=2"></script>
 <script>
 // ============================================================
@@ -984,6 +985,21 @@ cv=document.getElementById('gameCanvas');
 cv.width=GW;cv.height=GH;
 ctx=cv.getContext('2d');
 
+// 屏幕适配
+function fitScreen(){
+  var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
+  var s=Math.min(maxW/GW,maxH/GH);
+  cv.style.width=GW*s+'px';
+  cv.style.height=GH*s+'px';
+  document.getElementById('gameWrap').style.width=GW*s+'px';
+  document.getElementById('gameWrap').style.height=GH*s+'px';
+}
+fitScreen();window.addEventListener('resize',fitScreen);
+function toLogical(clientX,clientY){
+  var r=cv.getBoundingClientRect();
+  return {x:(clientX-r.left)/(parseFloat(cv.style.width)||GW)*GW,y:(clientY-r.top)/(parseFloat(cv.style.height)||GH)*GH};
+}
+
 document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(e.key==' '||e.key=='j')tfire=true;
   if(e.key==='Escape'){
     if(state===1){state=0;selectedVehicle=-1;selectedEva=0;takenEvas={};return;}
@@ -1009,12 +1025,13 @@ cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0])
 cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);});
 cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
 
-function ht(t){if(state!==2)return;var r=cv.getBoundingClientRect(),x=t.clientX-r.left,y=t.clientY-r.top;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
 cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
+function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 cv.addEventListener('click',function(e){
-  var r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
   // 游戏中退出按钮: GW-72 ~ GW-10, y:5~27
   if(state===2&&mx>GW-72&&mx<GW-10&&my>5&&my<27){state=0;map=null;players=[];bots=[];bullets=[];powerups=[];liquids={};cans=[];killFeed=[];takenEvas={};return;}
   if(state===0){
@@ -1032,7 +1049,6 @@ cv.addEventListener('click',function(e){
   }
 });
 
-function hm(e){if(state!==2)return;var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 // 主循环
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
