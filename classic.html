@@ -19,8 +19,9 @@ var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 保持15×15格，每格尽量大
-  CS=Math.floor(Math.min(maxW/COLS,maxH/ROWS));
+  // 保持15×15正方形，每格尽量大
+  var maxSize=Math.min(maxW,maxH);
+  CS=Math.floor(maxSize/COLS);
   GW=COLS*CS;GH=ROWS*CS;
   MAP_OX=Math.floor((maxW-GW)/2);
   MAP_OY=Math.floor((maxH-GH)/2);
