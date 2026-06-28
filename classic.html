@@ -19,10 +19,19 @@ var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 保持15×15正方形
+  // 保持15×15正方形，底部留3行放控制按钮
   var maxSize=Math.min(maxW,maxH);
   CS=Math.floor(maxSize/COLS);
-  GW=COLS*CS;GH=ROWS*CS;
+  // 如果高度有余量，扩展底部控制区
+  var mapH=COLS*CS;
+  var ctrlH=Math.max(CS*2, Math.floor(CS*2.5));
+  if(mapH+ctrlH<=maxH){
+    GW=COLS*CS;GH=mapH+ctrlH;
+  }else{
+    // 屏幕太矮，压缩CS
+    CS=Math.floor(maxH/(COLS+2.5));
+    GW=COLS*CS;GH=CS*(COLS+2)+Math.floor(CS*0.5);
+  }
   MAP_OX=0;MAP_OY=0;
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
@@ -445,11 +454,48 @@ function render(){
   // 草丛覆盖层（遮住坦克）
   drawMapLayer(true);
   ctx.restore();
-  ctx.restore();
   var al=0;for(var i=0;i<enemies.length;i++)if(enemies[i].alive)al++;
   drawHUD(1,tot-spd+al,player.hp,player.fl);
+  // 虚拟摇杆UI（仅游戏中显示）
+  if(state===1)drawTouchControls();
   if(state===2)drawEnd(false);
   if(state===3)drawEnd(true);
+}
+
+// ============ 虚拟摇杆绘制 ============
+function drawTouchControls(){
+  var alpha=0.25;
+  // 底部控制区: 地图下方到画布底部的区域
+  var ctrlTop=ROWS*CS;  // 地图底部
+  var ctrlH=GH-ctrlTop;
+  // 左摇杆中心
+  var lx=GW*0.25, ly=ctrlTop+ctrlH*0.5, r=Math.min(CS*1.2, ctrlH*0.42);
+  // 外圈
+  ctx.fillStyle='rgba(255,255,255,'+alpha+')';
+  ctx.beginPath();ctx.arc(lx,ly,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,'+(alpha+0.15)+')';ctx.lineWidth=2;
+  ctx.stroke();
+  // 内圈（跟随触摸方向的小圆）
+  var ix=lx,iy=ly;
+  if(tdir!=null){
+    var v=DV[tdir];
+    ix=lx+v.dx*r*0.55;iy=ly+v.dy*r*0.55;
+  }
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.beginPath();ctx.arc(ix,iy,r*0.42,0,Math.PI*2);ctx.fill();
+  // 标签
+  ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font=(Math.max(9,CS*0.32))+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';ctx.fillText('移动',lx,ly+r+Math.max(11,CS*0.35));
+
+  // 开火按钮（右侧）
+  var fx=GW*0.78, fy=ctrlTop+ctrlH*0.5, fr=Math.min(CS*1.1, ctrlH*0.38);
+  ctx.fillStyle='rgba(255,80,80,'+(tfire?0.5:0.25)+')';
+  ctx.beginPath();ctx.arc(fx,fy,fr,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,80,80,'+(tfire?0.7:0.3)+')';ctx.lineWidth=2;
+  ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,'+(tfire?0.9:0.5)+')';
+  ctx.font='bold '+Math.max(14,CS*0.5)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';ctx.fillText('射击',fx,fy+Math.max(5,CS*0.15));
 }
 
 // ============ 输入 ============
@@ -501,11 +547,27 @@ function ht(t){
   // state===0 时触摸即开始游戏
   if(state===0){startGame();return;}
   if(state===2||state===3){startGame();return;}
+  // 右侧区域 = 开火
   if(x>GW*.6){tfire=true;tdir=null;return;}
-  var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);
-  if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;
+  // 左侧摇杆: 中心在 GW*0.25, 垂直位置在地图下方控制区中央
+  var ctrlTop=ROWS*CS;
+  var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;
+  var deadZone=CS*0.25;
+  if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;
+  else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;
+  else tdir=dy>0?DIR.DOWN:DIR.UP;
 }
-function hm(e){var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function hm(e){
+  if(state!==1)return;
+  var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;
+  if(x>GW*.6){tfire=true;return;}
+  var ctrlTop=ROWS*CS;
+  var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;
+  var deadZone=CS*0.25;
+  if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;
+  else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;
+  else tdir=dy>0?DIR.DOWN:DIR.UP;
+}
 
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
 

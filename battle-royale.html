@@ -421,19 +421,37 @@ function drawKillFeed(){
 
 function drawTouchControls(){
   var alpha=0.25;
-  // 左摇杆 (移动+炮口, 方向=射击方向)
-  var lx=GW*0.25,ly=GH*0.75,r=38;
-  ctx.fillStyle='rgba(255,255,255,'+alpha+')';ctx.beginPath();ctx.arc(lx,ly,r,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,'+(alpha+0.15)+')';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='10px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-  ctx.fillText('移动/炮口',lx,ly+r+16);
+  // 底部控制区: 地图下方到画布底部的区域
+  var ctrlTop=ROWS*CS;  // 地图底部
+  var ctrlH=GH-ctrlTop;
+  // 左摇杆中心
+  var lx=GW*0.25, ly=ctrlTop+ctrlH*0.5, r=Math.min(CS*1.2, ctrlH*0.42);
+  // 外圈
+  ctx.fillStyle='rgba(255,255,255,'+alpha+')';
+  ctx.beginPath();ctx.arc(lx,ly,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,'+(alpha+0.15)+')';ctx.lineWidth=2;
+  ctx.stroke();
+  // 内圈（跟随触摸方向的小圆）
+  var ix=lx,iy=ly;
+  if(tdir!=null){
+    var v=DV[tdir];
+    ix=lx+v.dx*r*0.55;iy=ly+v.dy*r*0.55;
+  }
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.beginPath();ctx.arc(ix,iy,r*0.42,0,Math.PI*2);ctx.fill();
+  // 标签
+  ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font=(Math.max(9,CS*0.32))+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';ctx.fillText('移动',lx,ly+r+Math.max(11,CS*0.35));
 
-  // 射击按钮 (右下)
-  var fx=GW*0.78,fy=GH*0.75,fr=35;
-  ctx.fillStyle='rgba(255,80,80,'+(tfire?0.5:0.25)+')';ctx.beginPath();ctx.arc(fx,fy,fr,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='rgba(255,80,80,'+(tfire?0.7:0.3)+')';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,'+(tfire?0.9:0.5)+')';ctx.font='bold 16px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
-  ctx.fillText('射击',fx,fy+6);
+  // 开火按钮（右侧）
+  var fx=GW*0.78, fy=ctrlTop+ctrlH*0.5, fr=Math.min(CS*1.1, ctrlH*0.38);
+  ctx.fillStyle='rgba(255,80,80,'+(tfire?0.5:0.25)+')';
+  ctx.beginPath();ctx.arc(fx,fy,fr,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,80,80,'+(tfire?0.7:0.3)+')';ctx.lineWidth=2;
+  ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,'+(tfire?0.9:0.5)+')';
+  ctx.font='bold '+Math.max(14,CS*0.5)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';ctx.fillText('射击',fx,fy+Math.max(5,CS*0.15));
 }
 
 function drawResult(results){
@@ -1008,11 +1026,10 @@ function toLogical(clientX,clientY){
 function onTouchStart(e){e.preventDefault();ht(e.touches[0]);}
 function onTouchMove(e){e.preventDefault();ht(e.touches[0]);}
 function onTouchEnd(e){e.preventDefault();tdir=null;tfire=false;
-  // 安卓上 click 可能被阻止，在 touchend 中也处理点击
+  // 安卓上 click 可能被阻止，在 touchend 中 dispatch click 事件
   if(state===0||state===3){
     var t=e.changedTouches[0];
-    var p=toLogical(t.clientX,t.clientY);
-    handleGameClick({clientX:t.clientX,clientY:t.clientY});
+    cv.dispatchEvent(new MouseEvent('click',{clientX:t.clientX,clientY:t.clientY}));
   }
 }
 cv.addEventListener('touchstart',onTouchStart,{passive:false});
@@ -1066,11 +1083,19 @@ cv.addEventListener('click',function(e){
   }
 });
 
-function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
-// 点击处理（移动端通过click，PC也通过click）
-function handleGameClick(e){
-  var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
-function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function ht(t){
+  if(state!==2)return;
+  var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;
+  if(x>GW*.6){tfire=true;tdir=null;return;}
+  var ctrlTop=ROWS*CS;
+  var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;
+  var deadZone=CS*0.25;
+  if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;
+  else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;
+  else tdir=dy>0?DIR.DOWN:DIR.UP;
+}
+// 鼠标移动处理
+function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var ctrlTop=ROWS*CS;var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;var deadZone=CS*0.25;if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 // 主循环
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
