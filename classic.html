@@ -19,12 +19,11 @@ var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 保持15×15正方形，每格尽量大
+  // 保持15×15正方形
   var maxSize=Math.min(maxW,maxH);
   CS=Math.floor(maxSize/COLS);
   GW=COLS*CS;GH=ROWS*CS;
-  MAP_OX=Math.floor((maxW-GW)/2);
-  MAP_OY=Math.floor((maxH-GH)/2);
+  MAP_OX=0;MAP_OY=0;
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
   cv.style.height=GH+'px';
