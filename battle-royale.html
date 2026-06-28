@@ -1001,11 +1001,24 @@ function toLogical(clientX,clientY){
   return {x:clientX-r.left,y:clientY-r.top};
 }
 
-// 触摸事件
-cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
-
+// 触摸事件 - canvas + body 双重绑定确保安卓捕获
+function onTouchStart(e){e.preventDefault();ht(e.touches[0]);}
+function onTouchMove(e){e.preventDefault();ht(e.touches[0]);}
+function onTouchEnd(e){e.preventDefault();tdir=null;tfire=false;
+  // 安卓上 click 可能被阻止，在 touchend 中也处理点击
+  if(state===0||state===3){
+    var t=e.changedTouches[0];
+    var p=toLogical(t.clientX,t.clientY);
+    handleGameClick({clientX:t.clientX,clientY:t.clientY});
+  }
+}
+cv.addEventListener('touchstart',onTouchStart,{passive:false});
+cv.addEventListener('touchmove',onTouchMove,{passive:false});
+cv.addEventListener('touchend',onTouchEnd,{passive:false});
+document.body.addEventListener('touchstart',onTouchStart,{passive:false});
+document.body.addEventListener('touchmove',onTouchMove,{passive:false});
+document.body.addEventListener('touchend',onTouchEnd,{passive:false});
+// 键盘事件（PC）
 document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(e.key==' '||e.key=='j')tfire=true;
   if(e.key==='Escape'){
     if(state===1){state=0;selectedVehicle=-1;selectedEva=0;takenEvas={};return;}
@@ -1026,10 +1039,6 @@ cv.addEventListener('wheel',function(e){
   if(state!==2)return;
   targetZoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,targetZoom-e.deltaY*0.0005));
 });
-// 触摸事件
-cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
 // PC 鼠标事件
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
@@ -1055,6 +1064,9 @@ cv.addEventListener('click',function(e){
 });
 
 function ht(t){if(state!==2)return;var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+// 点击处理（移动端通过click，PC也通过click）
+function handleGameClick(e){
+  var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
 function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 // 主循环

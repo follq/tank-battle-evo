@@ -460,10 +460,22 @@ document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;i
   if(e.key==='Escape'){state=0;curLevel=1;curChapter=1;map=null;enemies=[];bullets=[];powerups=[];liquids={};cans=[];}
 });
 document.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;if(e.key==' '||e.key=='j')tfire=false;});
-// 触摸事件
-cv.addEventListener('touchstart',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchmove',function(e){e.preventDefault();ht(e.touches[0]);},{passive:false});
-cv.addEventListener('touchend',function(e){e.preventDefault();tdir=null;tfire=false;});
+// 触摸事件 - 同时支持 canvas 和 body（确保移动端捕获）
+function onTouchStart(e){e.preventDefault();ht(e.touches[0]);}
+function onTouchMove(e){e.preventDefault();ht(e.touches[0]);}
+function onTouchEnd(e){e.preventDefault();tdir=null;tfire=false;
+  if(state===0||state===2||state===3){
+    var t=e.changedTouches[0];
+    cv.dispatchEvent(new MouseEvent('click',{clientX:t.clientX,clientY:t.clientY}));
+  }
+}
+
+cv.addEventListener('touchstart',onTouchStart,{passive:false});
+cv.addEventListener('touchmove',onTouchMove,{passive:false});
+cv.addEventListener('touchend',onTouchEnd,{passive:false});
+document.body.addEventListener('touchstart',onTouchStart,{passive:false});
+document.body.addEventListener('touchmove',onTouchMove,{passive:false});
+document.body.addEventListener('touchend',onTouchEnd,{passive:false});
 // PC 鼠标事件
 cv.addEventListener('mousedown',function(e){hm(e);});
 cv.addEventListener('mousemove',function(e){if(e.buttons)hm(e);});
@@ -484,7 +496,15 @@ cv.addEventListener('click',function(e){
   }
 });
 function backToMenu(){state=0;curLevel=1;curChapter=1;map=null;enemies=[];bullets=[];powerups=[];liquids={};cans=[];}
-function ht(t){var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;tdir=null;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function ht(t){
+  var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;
+  // state===0 时触摸即开始游戏
+  if(state===0){startGame();return;}
+  if(state===2||state===3){startGame();return;}
+  if(x>GW*.6){tfire=true;tdir=null;return;}
+  var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);
+  if(d<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;
+}
 function hm(e){var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*.25,cy=GH*.75,dx=x-cx,dy=y-cy;if(Math.abs(dx)<15&&Math.abs(dy)<15)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
