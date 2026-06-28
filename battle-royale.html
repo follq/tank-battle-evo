@@ -19,15 +19,19 @@ canvas{display:block;border:2px solid #333;border-radius:4px;outline:none}
 // ============================================================
 var COLS=42,ROWS=30;
 var GW,GH,CS,MAP_OX,MAP_OY,MAP_AREA_W,MAP_AREA_H;
+var MAP_H,CTRL_TOP,CTRL_H; // 地图高度、控制区起点、控制区高度
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 按宽度计算CS，保持42:33比例
+  // 按宽度计算CS，保持42:30比例，底部加控制区
   CS=Math.floor(maxW/COLS);
-  GW=COLS*CS;GH=(ROWS+3)*CS;
+  GW=COLS*CS;MAP_H=ROWS*CS;
+  CTRL_H=Math.max(CS*1.8, Math.min(CS*3, Math.floor((maxH-MAP_H)*0.8)));
+  GH=MAP_H+CTRL_H;
   // 如果超出高度，按高度重新计算
-  if(GH>maxH){CS=Math.floor(maxH/(ROWS+3));GW=COLS*CS;GH=(ROWS+3)*CS;}
+  if(GH>maxH){CS=Math.floor(maxH/(ROWS+2.5));GW=COLS*CS;MAP_H=ROWS*CS;CTRL_H=Math.max(CS*1.8, maxH-MAP_H-4);GH=MAP_H+CTRL_H;}
+  CTRL_TOP=MAP_H;
   MAP_OX=Math.floor((maxW-GW)/2);MAP_OY=0;
-  MAP_AREA_W=GW;MAP_AREA_H=ROWS*CS;
+  MAP_AREA_W=GW;MAP_AREA_H=MAP_H;
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
   cv.style.height=GH+'px';
@@ -421,11 +425,8 @@ function drawKillFeed(){
 
 function drawTouchControls(){
   var alpha=0.25;
-  // 底部控制区: 地图下方到画布底部的区域
-  var ctrlTop=ROWS*CS;  // 地图底部
-  var ctrlH=GH-ctrlTop;
-  // 左摇杆中心
-  var lx=GW*0.25, ly=ctrlTop+ctrlH*0.5, r=Math.min(CS*1.2, ctrlH*0.42);
+  // 左摇杆中心（控制区左上区域）
+  var lx=GW*0.25, ly=CTRL_TOP+CTRL_H*0.5, r=Math.min(CS*1.15, CTRL_H*0.44);
   // 外圈
   ctx.fillStyle='rgba(255,255,255,'+alpha+')';
   ctx.beginPath();ctx.arc(lx,ly,r,0,Math.PI*2);ctx.fill();
@@ -444,7 +445,7 @@ function drawTouchControls(){
   ctx.textAlign='center';ctx.fillText('移动',lx,ly+r+Math.max(11,CS*0.35));
 
   // 开火按钮（右侧）
-  var fx=GW*0.78, fy=ctrlTop+ctrlH*0.5, fr=Math.min(CS*1.1, ctrlH*0.38);
+  var fx=GW*0.78, fy=CTRL_TOP+CTRL_H*0.5, fr=Math.min(CS*1.05, CTRL_H*0.40);
   ctx.fillStyle='rgba(255,80,80,'+(tfire?0.5:0.25)+')';
   ctx.beginPath();ctx.arc(fx,fy,fr,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='rgba(255,80,80,'+(tfire?0.7:0.3)+')';ctx.lineWidth=2;
@@ -925,7 +926,9 @@ function checkCollisions(){
 function render(){
   // 背景图
   var bg=getSprite('ui_bg');
-  if(bg)ctx.drawImage(bg,0,0,GW,GH);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);}
+  // 先清全画布为黑色，背景图只填地图区域
+  ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);
+  if(bg)ctx.drawImage(bg,0,0,GW,MAP_H);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,MAP_H);}
   if(state===0){
     // 主菜单
     ctx.fillStyle='#f0c040';ctx.font='bold 32px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
@@ -1087,15 +1090,14 @@ function ht(t){
   if(state!==2)return;
   var p=toLogical(t.clientX,t.clientY),x=p.x,y=p.y;
   if(x>GW*.6){tfire=true;tdir=null;return;}
-  var ctrlTop=ROWS*CS;
-  var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;
+  var cx=GW*0.25,cy=CTRL_TOP+CTRL_H*0.5,dx=x-cx,dy=y-cy;
   var deadZone=CS*0.25;
   if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;
   else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;
   else tdir=dy>0?DIR.DOWN:DIR.UP;
 }
 // 鼠标移动处理
-function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var ctrlTop=ROWS*CS;var cx=GW*0.25,cy=ctrlTop+(GH-ctrlTop)*0.5,dx=x-cx,dy=y-cy;var deadZone=CS*0.25;if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
+function hm(e){if(state!==2)return;var p=toLogical(e.clientX,e.clientY),x=p.x,y=p.y;if(x>GW*.6){tfire=true;return;}var cx=GW*0.25,cy=CTRL_TOP+CTRL_H*0.5,dx=x-cx,dy=y-cy;var deadZone=CS*0.25;if(Math.abs(dx)<deadZone&&Math.abs(dy)<deadZone)tdir=null;else if(Math.abs(dx)>Math.abs(dy))tdir=dx>0?DIR.RIGHT:DIR.LEFT;else tdir=dy>0?DIR.DOWN:DIR.UP;}
 
 // 主循环
 function loop(ts){update(ts);render();requestAnimationFrame(loop);}
