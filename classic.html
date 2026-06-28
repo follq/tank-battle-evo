@@ -17,27 +17,30 @@ canvas{display:block;border:2px solid #333;border-radius:8px}
 var COLS=15,ROWS=15;
 var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
-var MAP_H,CTRL_TOP,CTRL_H; // 地图高度、控制区起点、控制区高度
+var HUD_H, MAP_H, CTRL_H, CTRL_TOP, MAP_TOP; // 三区布局
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 地图保持15×15正方形，按屏幕最小边计算CS
-  var maxSize=Math.min(maxW,maxH);
-  CS=Math.floor(maxSize/COLS);
+  // 地图保持正方形，上方HUD + 下方按钮
+  // 先按宽度算CS，确保地图+上下区域不超出屏幕
+  CS=Math.floor(maxW/COLS);
   GW=COLS*CS;
   MAP_H=COLS*CS;
-  // 控制区高度：至少 CS*2，最多占剩余空间
-  var availH=maxH-MAP_H;
-  if(availH<CS*1.2){
-    // 屏幕太矮，缩小地图让出控制区
-    CS=Math.floor(maxH/(COLS+1.8));
+  HUD_H=Math.floor(CS*1.3);   // 上方信息栏
+  CTRL_H=Math.floor(CS*2.3);  // 下方按钮区
+  var totalH=HUD_H+MAP_H+CTRL_H;
+  if(totalH>maxH){
+    // 高度不够，缩小CS
+    CS=Math.floor(maxH/(COLS+1.3+2.3));
     GW=COLS*CS;
     MAP_H=COLS*CS;
-    availH=maxH-MAP_H;
+    HUD_H=Math.floor(CS*1.3);
+    CTRL_H=Math.floor(CS*2.3);
+    totalH=HUD_H+MAP_H+CTRL_H;
   }
-  CTRL_H=Math.max(CS*1.8, Math.min(availH-4, CS*2.5));
-  CTRL_TOP=MAP_H;
-  GH=MAP_H+CTRL_H;
+  MAP_TOP=HUD_H;
+  CTRL_TOP=HUD_H+MAP_H;
+  GH=totalH;
   MAP_OX=0;MAP_OY=0;
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
@@ -238,13 +241,24 @@ function drawPwup(p,icon){
     ctx.fillStyle='rgba(240,192,64,.3)';ctx.fillRect(x+2,y+2,CS-4,CS-4);ctx.fillStyle='#f0c040';ctx.font=CS*.6+'px sans-serif';ctx.textAlign='center';ctx.fillText(icon,x+CS/2,y+CS/2+6);
   }
 }
-function drawHUD(lv,el,hp,fl){ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,GW,28);ctx.fillStyle='#f0c040';ctx.font='14px sans-serif';ctx.textAlign='left';ctx.fillText('第'+curLevel+'关·第'+curChapter+'章',10,20);ctx.fillStyle='#f66';ctx.fillText('敌人:'+el,160,20);ctx.fillStyle='#4d4';ctx.fillText('HP:'+Array(hp+1).join('\u2665'),280,20);ctx.fillStyle='#f0c040';ctx.fillText('火:Lv'+fl,420,20);
+function drawHUD(lv,el,hp,fl){
+  var hudY=0, hudH=HUD_H;
+  ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,hudY,GW,hudH);
+  var cy=hudY+hudH*0.55;
+  ctx.fillStyle='#f0c040';ctx.font='bold '+Math.max(11,CS*0.38)+'px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='left';
+  ctx.fillText('第'+curLevel+'关·第'+curChapter+'章',CS*0.3,cy);
+  ctx.fillStyle='#f66';ctx.textAlign='left';
+  ctx.fillText('敌人:'+el,CS*4.5,cy);
+  ctx.fillStyle='#4d4';ctx.textAlign='left';
+  ctx.fillText('HP:'+Array(hp+1).join('\u2665'),CS*7.5,cy);
+  ctx.fillStyle='#f0c040';ctx.textAlign='left';
+  ctx.fillText('火:Lv'+fl,CS*10.5,cy);
   // 退出按钮
-  var bx=GW-75,by=4,bw=65,bh=20;
-  ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(bx,by,bw,bh);
-  ctx.strokeStyle='#666';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);
-  ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.textAlign='center';
-  ctx.fillText('退出 ESC',bx+bw/2,by+14);
+  var bx=GW-CS*1.6,by=hudY+3,bw=CS*1.4,bh=hudH-6;
+  ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle='#999';ctx.font=Math.max(9,CS*0.28)+'px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
+  ctx.fillText('退出',bx+bw/2,by+bh*0.65);
 }
 function drawEnd(won){ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,GW,GH);
   ctx.fillStyle=won?'#4d4':'#f44';ctx.font='bold 48px sans-serif';ctx.textAlign='center';
@@ -438,18 +452,19 @@ function update(ts){
 }
 
 function render(){
-  // 先清全画布为黑色
+  // 全画布纯黑底
   ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);
-  // 背景图只填地图区域（不拉伸到控制区）
+  // 背景图只填充地图区域
   var bg=getSprite('ui_bg');
-  if(bg)ctx.drawImage(bg,0,0,GW,MAP_H);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,MAP_H);}
+  if(bg)ctx.drawImage(bg,0,MAP_TOP,GW,MAP_H);
+  else{ctx.fillStyle='#111';ctx.fillRect(0,MAP_TOP,GW,MAP_H);}
   if(state===0){ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.fillText('🏰 经典模式',GW/2,GH/2-70);ctx.font='18px sans-serif';ctx.fillText('保卫水晶基地 · 30关挑战',GW/2,GH/2-30);ctx.fillStyle='#f0c040';ctx.fillText('点击开始第'+curLevel+'关',GW/2,GH/2+10);ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('WASD 移动 | 空格 射击 | ESC 返回',GW/2,GH/2+45);
     var bx=GW/2-60,by=GH/2+65,bw=120,bh=32;
     ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,bw,bh);
     ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('↩ 返回主菜单',GW/2,by+22);
     return;}
-  // 第一层：地面 + 非草丛瓦片
-  ctx.save();ctx.translate(MAP_OX,MAP_OY);
+  // 第一层：地面 + 非草丛瓦片（地图从 MAP_TOP 偏移开始）
+  ctx.save();ctx.translate(MAP_OX,MAP_TOP);
   drawMapLayer(false);
   for(var i=0;i<cans.length;i++)drawCan(cans[i]);
   for(var k in liquids){var a=k.split(',');var lx=parseInt(a[1])*CS,ly=parseInt(a[0])*CS;var liqSprite=getSprite('tile_liquid');if(liqSprite){var lw=CS*0.95,lh=CS*1.2;ctx.drawImage(liqSprite,lx+(CS-lw)/2,ly+(CS-lh)/2,lw,lh);}else{ctx.fillStyle='rgba(0,255,100,.3)';ctx.fillRect(lx,ly,CS,CS);}}
@@ -473,14 +488,14 @@ function render(){
 // ============ 虚拟摇杆绘制 ============
 function drawTouchControls(){
   var alpha=0.25;
-  // 左摇杆中心（控制区左上区域）
+  // 左摇杆（控制区左上区域）
   var lx=GW*0.25, ly=CTRL_TOP+CTRL_H*0.5, r=Math.min(CS*1.15, CTRL_H*0.44);
   // 外圈
   ctx.fillStyle='rgba(255,255,255,'+alpha+')';
   ctx.beginPath();ctx.arc(lx,ly,r,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,'+(alpha+0.15)+')';ctx.lineWidth=2;
   ctx.stroke();
-  // 内圈（跟随触摸方向的小圆）
+  // 内圈
   var ix=lx,iy=ly;
   if(tdir!=null){
     var v=DV[tdir];
@@ -489,7 +504,8 @@ function drawTouchControls(){
   ctx.fillStyle='rgba(255,255,255,0.35)';
   ctx.beginPath();ctx.arc(ix,iy,r*0.42,0,Math.PI*2);ctx.fill();
   // 标签
-  ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font=(Math.max(9,CS*0.32))+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.font=(Math.max(9,CS*0.32))+'px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.textAlign='center';ctx.fillText('移动',lx,ly+r+Math.max(11,CS*0.35));
 
   // 开火按钮（右侧）
@@ -534,8 +550,8 @@ cv.addEventListener('mouseup',function(){tdir=null;tfire=false;});
 // 点击事件（移动端+PC）
 cv.addEventListener('click',function(e){
   var p=toLogical(e.clientX,e.clientY),mx=p.x,my=p.y;
-  // 游戏中退出按钮: GW-75 ~ GW-10, y:4~24
-  if(state===1&&mx>GW-75&&mx<GW-10&&my>4&&my<24){backToMenu();return;}
+  // 游戏中退出按钮（HUD右上角: GW-CS*1.6 ~ GW, y:3 ~ HUD_H-3）
+  if(state===1&&mx>GW-CS*1.6&&mx<GW&&my>0&&my<HUD_H){backToMenu();return;}
   if(state===0){
     if(mx>GW/2-60&&mx<GW/2+60&&my>GH/2+65&&my<GH/2+97){location.href='index.html';return;}
     startGame();
