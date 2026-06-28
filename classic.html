@@ -17,13 +17,13 @@ canvas{display:block;border:2px solid #333;border-radius:8px}
 var COLS=15,ROWS=15;
 var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
-var HUD_H, MAP_H, CTRL_H, CTRL_TOP, MAP_TOP, MAP_PAD; // 三区布局 + 边框内边距
+var HUD_H, MAP_H, CTRL_H, CTRL_TOP, MAP_TOP, MAP_PAD, MAP_OX_ADJ, MAP_OY_ADJ; // 三区布局 + 边框内边距 + 微调
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
   // 三区布局: 上方HUD + 中间地图(带边框) + 下方按钮
   // 背景图有边框，地图元素需要缩进边框内部
-  var borderRatio=0.092;
+  var borderRatio=0.10;
   var contentCols=COLS/(1-borderRatio*2);
   CS=Math.floor(maxW/contentCols);
   var mapTotalW=COLS*CS/(1-borderRatio*2);
@@ -55,6 +55,9 @@ function initCanvas(){
   GH=totalH;
   MAP_OX=Math.floor((maxW-GW)/2);
   MAP_OY=0;
+  // 微调偏移：让地图内容在边框内往左上移动
+  MAP_OX_ADJ=Math.floor(CS*0.25);
+  MAP_OY_ADJ=Math.floor(CS*0.25);
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
   cv.style.height=GH+'px';
@@ -476,8 +479,8 @@ function render(){
     ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,bw,bh);
     ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('↩ 返回主菜单',GW/2,by+22);
     return;}
-  // 第一层：地面 + 非草丛瓦片（地图内容在边框内 MAP_PAD 偏移）
-  ctx.save();ctx.translate(MAP_OX+MAP_PAD, MAP_TOP+MAP_PAD);
+  // 第一层：地面 + 非草丛瓦片（地图内容在边框内，含微调偏移）
+  ctx.save();ctx.translate(MAP_OX+MAP_PAD-MAP_OX_ADJ, MAP_TOP+MAP_PAD-MAP_OY_ADJ);
   drawMapLayer(false);
   for(var i=0;i<cans.length;i++)drawCan(cans[i]);
   for(var k in liquids){var a=k.split(',');var lx=parseInt(a[1])*CS,ly=parseInt(a[0])*CS;var liqSprite=getSprite('tile_liquid');if(liqSprite){var lw=CS*0.95,lh=CS*1.2;ctx.drawImage(liqSprite,lx+(CS-lw)/2,ly+(CS-lh)/2,lw,lh);}else{ctx.fillStyle='rgba(0,255,100,.3)';ctx.fillRect(lx,ly,CS,CS);}}
