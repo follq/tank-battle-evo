@@ -40,6 +40,7 @@ function loadSprites() {
   
   // UI元素
   toLoad['ui_bg'] = SPRITE_BASE + 'ui/bg.png?v=' + Date.now();
+  toLoad['ui_border'] = SPRITE_BASE + 'ui/border.png?v=' + Date.now();
   
   // 子弹素材 (4级火力 bullet_1~bullet_4)
   for (var i = 1; i <= 4; i++) {

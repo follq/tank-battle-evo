@@ -17,31 +17,44 @@ canvas{display:block;border:2px solid #333;border-radius:8px}
 var COLS=15,ROWS=15;
 var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
 
-var HUD_H, MAP_H, CTRL_H, CTRL_TOP, MAP_TOP; // 三区布局
+var HUD_H, MAP_H, CTRL_H, CTRL_TOP, MAP_TOP, MAP_PAD; // 三区布局 + 边框内边距
 
 function initCanvas(){
   var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  // 地图保持正方形，上方HUD + 下方按钮
-  // 先按宽度算CS，确保地图+上下区域不超出屏幕
-  CS=Math.floor(maxW/COLS);
-  GW=COLS*CS;
-  MAP_H=COLS*CS;
-  HUD_H=Math.floor(CS*1.3);   // 上方信息栏
-  CTRL_H=Math.floor(CS*2.3);  // 下方按钮区
+  // 三区布局: 上方HUD + 中间地图(带边框) + 下方按钮
+  // 背景图有边框，地图元素需要缩进边框内部
+  var borderRatio=0.085;
+  var contentCols=COLS/(1-borderRatio*2);
+  CS=Math.floor(maxW/contentCols);
+  var mapTotalW=COLS*CS/(1-borderRatio*2);
+  GW=Math.floor(mapTotalW);
+  MAP_PAD=Math.floor(GW*borderRatio);
+  var contentW=GW-MAP_PAD*2;
+  CS=Math.floor(contentW/COLS);
+  contentW=COLS*CS;
+  GW=contentW+MAP_PAD*2;
+  
+  MAP_H=contentW+MAP_PAD*2;
+  HUD_H=Math.floor(CS*1.3);
+  CTRL_H=Math.floor(CS*2.3);
   var totalH=HUD_H+MAP_H+CTRL_H;
   if(totalH>maxH){
-    // 高度不够，缩小CS
-    CS=Math.floor(maxH/(COLS+1.3+2.3));
-    GW=COLS*CS;
-    MAP_H=COLS*CS;
-    HUD_H=Math.floor(CS*1.3);
-    CTRL_H=Math.floor(CS*2.3);
+    var availH=maxH-HUD_H-CTRL_H;
+    MAP_H=Math.floor(availH);
+    GW=MAP_H;
+    MAP_PAD=Math.floor(GW*borderRatio);
+    var innerSize=GW-MAP_PAD*2;
+    CS=Math.floor(innerSize/COLS);
+    innerSize=COLS*CS;
+    GW=innerSize+MAP_PAD*2;
+    MAP_H=GW;
     totalH=HUD_H+MAP_H+CTRL_H;
   }
   MAP_TOP=HUD_H;
   CTRL_TOP=HUD_H+MAP_H;
   GH=totalH;
-  MAP_OX=0;MAP_OY=0;
+  MAP_OX=Math.floor((maxW-GW)/2);
+  MAP_OY=0;
   cv.width=GW;cv.height=GH;
   cv.style.width=GW+'px';
   cv.style.height=GH+'px';
@@ -454,8 +467,8 @@ function update(ts){
 function render(){
   // 全画布纯黑底
   ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);
-  // 背景图只填充地图区域
-  var bg=getSprite('ui_bg');
+  // 背景图只填充地图区域（经典模式用带边框的 border.png）
+  var bg=getSprite('ui_border');
   if(bg)ctx.drawImage(bg,0,MAP_TOP,GW,MAP_H);
   else{ctx.fillStyle='#111';ctx.fillRect(0,MAP_TOP,GW,MAP_H);}
   if(state===0){ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.fillText('🏰 经典模式',GW/2,GH/2-70);ctx.font='18px sans-serif';ctx.fillText('保卫水晶基地 · 30关挑战',GW/2,GH/2-30);ctx.fillStyle='#f0c040';ctx.fillText('点击开始第'+curLevel+'关',GW/2,GH/2+10);ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('WASD 移动 | 空格 射击 | ESC 返回',GW/2,GH/2+45);
@@ -463,8 +476,8 @@ function render(){
     ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,bw,bh);
     ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('↩ 返回主菜单',GW/2,by+22);
     return;}
-  // 第一层：地面 + 非草丛瓦片（地图从 MAP_TOP 偏移开始）
-  ctx.save();ctx.translate(MAP_OX,MAP_TOP);
+  // 第一层：地面 + 非草丛瓦片（地图内容在边框内 MAP_PAD 偏移）
+  ctx.save();ctx.translate(MAP_OX+MAP_PAD, MAP_TOP+MAP_PAD);
   drawMapLayer(false);
   for(var i=0;i<cans.length;i++)drawCan(cans[i]);
   for(var k in liquids){var a=k.split(',');var lx=parseInt(a[1])*CS,ly=parseInt(a[0])*CS;var liqSprite=getSprite('tile_liquid');if(liqSprite){var lw=CS*0.95,lh=CS*1.2;ctx.drawImage(liqSprite,lx+(CS-lw)/2,ly+(CS-lh)/2,lw,lh);}else{ctx.fillStyle='rgba(0,255,100,.3)';ctx.fillRect(lx,ly,CS,CS);}}
