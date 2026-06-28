@@ -7,19 +7,32 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a16;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
-#gameWrap{position:relative;overflow:hidden}
-canvas{display:block;border:2px solid #333;border-radius:8px;transform-origin:0 0}
+canvas{display:block;border:2px solid #333;border-radius:8px;max-width:100vw;max-height:100vh}
 </style>
 </head>
 <body>
-<div id="gameWrap"><canvas id="gameCanvas"></canvas></div>
+<canvas id="gameCanvas"></canvas>
 <script src="js/sprites.js?v=2"></script>
 <script>
-var GW=1254,GH=1254,COLS=15,ROWS=15,CS=72;
-var MAP_OX=85,MAP_OY=85;
-var BSPD=480,BSZ=8;
-var scaleFactor=1; // 屏幕缩放比
-var DIR={UP:0,RIGHT:1,DOWN:2,LEFT:3};
+var COLS=15,ROWS=15;
+var GW,GH,CS,MAP_OX,MAP_OY,BSPD,BSZ;
+
+function initCanvas(){
+  var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
+  // 保持15×15格，每格尽量大
+  CS=Math.floor(Math.min(maxW/COLS,maxH/ROWS));
+  GW=COLS*CS;GH=ROWS*CS;
+  MAP_OX=Math.floor((maxW-GW)/2);
+  MAP_OY=Math.floor((maxH-GH)/2);
+  cv.width=GW;cv.height=GH;
+  cv.style.width=GW+'px';
+  cv.style.height=GH+'px';
+  BSPD=CS*6.7;BSZ=Math.max(2,CS/9);
+}
+
+var cv=document.getElementById('gameCanvas');
+initCanvas();window.addEventListener('resize',initCanvas);
+var ctx=cv.getContext('2d');
 var DV={0:{dx:0,dy:-1},1:{dx:1,dy:0},2:{dx:0,dy:1},3:{dx:-1,dy:0}};
 
 var FC={
@@ -37,21 +50,13 @@ var EC={
 var CANS_PER_CH=[0,2,2,3,4,5,5]; // 每章能量罐数
 
 var cv=document.getElementById('gameCanvas');
-cv.width=GW;cv.height=GH;
+initCanvas();window.addEventListener('resize',initCanvas);
 var ctx=cv.getContext('2d');
-
-// 屏幕适配：canvas 物理分辨率不变，CSS 尺寸等比缩放
-function fitScreen(){
-  var maxW=window.innerWidth-8,maxH=window.innerHeight-8;
-  scaleFactor=Math.min(maxW/GW,maxH/GH);
-  cv.style.width=(GW*scaleFactor)+'px';
-  cv.style.height=(GH*scaleFactor)+'px';
-}
-fitScreen();window.addEventListener('resize',fitScreen);
+var DIR={UP:0,RIGHT:1,DOWN:2,LEFT:3};
 
 function toLogical(clientX,clientY){
   var r=cv.getBoundingClientRect();
-  return {x:(clientX-r.left)/scaleFactor,y:(clientY-r.top)/scaleFactor};
+  return {x:clientX-r.left,y:clientY-r.top};
 }
 var state=0,map=[],player,enemies=[],bullets=[],powerups=[],liquids={},cans=[];
 var toSp=0,spd=0,tot=0,spT=2,lt=0;
