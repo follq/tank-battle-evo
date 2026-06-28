@@ -426,7 +426,7 @@ function update(ts){
 function render(){
   // 背景图 1:1 填满画布
   var bg=getSprite('ui_bg');
-  if(bg)ctx.drawImage(bg,0,0);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);}
+  if(bg)ctx.drawImage(bg,0,0,GW,GH);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);}
   if(state===0){ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.fillText('🏰 经典模式',GW/2,GH/2-70);ctx.font='18px sans-serif';ctx.fillText('保卫水晶基地 · 30关挑战',GW/2,GH/2-30);ctx.fillStyle='#f0c040';ctx.fillText('点击开始第'+curLevel+'关',GW/2,GH/2+10);ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('WASD 移动 | 空格 射击 | ESC 返回',GW/2,GH/2+45);
     var bx=GW/2-60,by=GH/2+65,bw=120,bh=32;
     ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,bw,bh);
