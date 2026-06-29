@@ -942,7 +942,7 @@ function render(){
   var bg=getSprite('ui_bg');
   // 先清全画布为黑色，背景图只填地图区域
   ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,GH);
-  if(bg)ctx.drawImage(bg,0,0,GW,MAP_H);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,0,GW,MAP_H);}
+  if(bg)ctx.drawImage(bg,0,MAP_TOP,GW,MAP_H);else{ctx.fillStyle='#0a0a16';ctx.fillRect(0,MAP_TOP,GW,MAP_H);}
   if(state===0){
     // 主菜单
     ctx.fillStyle='#f0c040';ctx.font='bold 32px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';
@@ -980,11 +980,11 @@ function render(){
 
   // 第一层：地面 + 非草丛瓦片（带相机偏移和缩放）
   ctx.save();
-  // 裁剪到地图边框内侧区域
+  // 裁剪到地图区域
   ctx.beginPath();
-  ctx.rect(MAP_OX, MAP_TOP, MAP_AREA_W, MAP_AREA_H);
+  ctx.rect(0, MAP_TOP, MAP_AREA_W, MAP_AREA_H);
   ctx.clip();
-  ctx.translate(MAP_OX-camX*CS*zoomLevel, MAP_TOP-camY*CS*zoomLevel);
+  ctx.translate(-camX*CS*zoomLevel, MAP_TOP-camY*CS*zoomLevel);
   ctx.scale(zoomLevel,zoomLevel);
   drawMapLayer(false);
   for(var k in liquids){var a=k.split(',');var lx=parseInt(a[1])*CS,ly=parseInt(a[0])*CS;var liqSprite=getSprite('tile_liquid');if(liqSprite){var lw=CS*0.95,lh=CS*1.2;ctx.drawImage(liqSprite,lx+(CS-lw)/2,ly+(CS-lh)/2,lw,lh);}else{ctx.fillStyle='rgba(0,255,100,.3)';ctx.fillRect(lx,ly,CS,CS);}}

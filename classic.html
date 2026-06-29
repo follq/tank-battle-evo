@@ -480,7 +480,7 @@ function render(){
     ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('↩ 返回主菜单',GW/2,by+22);
     return;}
   // 第一层：地面 + 非草丛瓦片（地图内容在边框内，含微调偏移）
-  ctx.save();ctx.translate(MAP_OX+MAP_PAD-MAP_OX_ADJ, MAP_TOP+MAP_PAD-MAP_OY_ADJ);
+  ctx.save();ctx.translate(MAP_PAD-MAP_OX_ADJ, MAP_TOP+MAP_PAD-MAP_OY_ADJ);
   drawMapLayer(false);
   for(var i=0;i<cans.length;i++)drawCan(cans[i]);
   for(var k in liquids){var a=k.split(',');var lx=parseInt(a[1])*CS,ly=parseInt(a[0])*CS;var liqSprite=getSprite('tile_liquid');if(liqSprite){var lw=CS*0.95,lh=CS*1.2;ctx.drawImage(liqSprite,lx+(CS-lw)/2,ly+(CS-lh)/2,lw,lh);}else{ctx.fillStyle='rgba(0,255,100,.3)';ctx.fillRect(lx,ly,CS,CS);}}
